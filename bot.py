@@ -42,22 +42,32 @@ async def delete_files(bot, message):
             return
 
         file_name_pattern = command_parts[1].lower()
-
         messages_count = 0
-        async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=674686):
-            if messages_count >= 100:  # Adjust the limit here
-                break
+        last_message_id = 0
 
-            if msg.media:
-                media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
-                if media:
-                    file_name = getattr(media, 'file_name', '')
-                    if file_name and file_name_pattern in file_name.lower():
-                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.id)
-                      
-                        messages_count += 1  # Track deleted messages
+        async def delete_matching_files():
+            nonlocal messages_count, last_message_id
+            while True:
+                deleted_in_batch = 0
+                async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=100, offset_id=last_message_id):
+                    if msg.media:
+                        media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
+                        if media:
+                            file_name = getattr(media, 'file_name', '')
+                            if file_name and file_name_pattern in file_name.lower():
+                                await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
+                                messages_count += 1  # Track deleted messages
+                                deleted_in_batch += 1
+                    last_message_id = msg.id
 
+                if deleted_in_batch == 0:
+                    break  # No more messages matching the pattern
+
+                await asyncio.sleep(2)  # Avoid hitting rate limits
+
+        await delete_matching_files()
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
+
     except Exception as e:
         print(f"An error occurred: {e}")
         await message.reply("An error occurred while deleting files.")
