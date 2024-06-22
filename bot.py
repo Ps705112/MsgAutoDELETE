@@ -49,7 +49,7 @@ async def delete_files(bot, message):
             nonlocal messages_count, last_message_id
             while True:
                 deleted_in_batch = 0
-                async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=100, offset_id=last_message_id):
+                async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=600000, offset_id=last_message_id):
                     if msg.media:
                         media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
                         if media:
