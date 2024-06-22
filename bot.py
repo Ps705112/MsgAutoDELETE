@@ -56,9 +56,9 @@ async def delete_files(bot, message):
             try:
                 async for message in User.search_messages(chat_id=CHANNEL_ID, query=file_name_pattern, filter="document"):
                     if file_name_pattern in message.document.file_name.lower():
-                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.message_id])
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
                         messages_count += 1
-                        logging.info(f"Deleted message with ID: {message.message_id}")
+                        logging.info(f"Deleted message with ID: {message.id}")
                         await asyncio.sleep(1)  # Avoid rate limits
 
             except FloodWait as e:
