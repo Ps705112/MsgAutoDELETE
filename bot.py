@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from os import environ
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters, idle, enums
 from pyrogram.errors import FloodWait
 
 # Configure logging
