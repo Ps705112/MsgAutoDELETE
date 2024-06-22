@@ -14,7 +14,7 @@ SESSION = environ.get("SESSION")
 CHANNEL_ID = int(environ.get("CHANNEL_ID"))
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 
-START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages based on file name pattern.</b>"
+START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages by Name.</b>"
 
 User = Client(name="user-account",
               session_string=SESSION,
@@ -30,12 +30,14 @@ Bot = Client(name="auto-delete",
              workers=300
              )
 
+
 @Bot.on_message(filters.command('start') & filters.private)
 async def start(bot, message):
     await message.reply(START_MSG.format(message.from_user.mention))
 
-@Bot.on_message(filters.command('delete_file') & filters.private)
-async def delete_files(bot, message):
+
+@Bot.on_message(filters.command('delete') & filters.private)
+async def delete_messages(bot, message):
     try:
         if message.from_user.id not in ADMINS:
             await message.reply("You don't have permission to use this command.")
@@ -43,25 +45,30 @@ async def delete_files(bot, message):
 
         command_parts = message.text.split(maxsplit=1)
         if len(command_parts) < 2:
-            await message.reply("Please provide the file name pattern to delete.")
+            await message.reply("Please provide the deletion criteria (text or filename pattern).")
             return
 
-        file_name_pattern = command_parts[1].lower()
-        messages_count = 0
+        criteria = command_parts[1].lower()
 
-        async def delete_matching_files():
+        async def delete_matching_messages():
             nonlocal messages_count
             logging.info("Starting deletion process...")
 
             try:
-                async for message in User.search_messages(chat_id=CHANNEL_ID, query=file_name_pattern):
-                    # Check if message has a document and its filename is not None
-                    if message.document and message.document.file_name:
-                        if file_name_pattern in message.document.file_name.lower():
-                            await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
-                            messages_count += 1
-                            logging.info(f"Deleted message with ID: {message.id}")
-                            await asyncio.sleep(1)  # Avoid rate limits
+                async for message in User.search_messages(chat_id=CHANNEL_ID):
+                    # Check for text in video titles
+                    if message.caption and criteria in message.caption.lower():
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
+                        messages_count += 1
+                        logging.info(f"Deleted message with ID: {message.id} (video title match)")
+                        await asyncio.sleep(1)  # Avoid rate limits
+
+                    # Check for text in video file names (if message has a document)
+                    elif message.document and message.document.file_name and criteria in message.document.file_name.lower():
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
+                        messages_count += 1
+                        logging.info(f"Deleted message with ID: {message.id} (file name match)")
+                        await asyncio.sleep(1)  # Avoid rate limits
 
             except FloodWait as e:
                 logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
@@ -69,12 +76,14 @@ async def delete_files(bot, message):
             except Exception as e:
                 logging.error(f"Error occurred while fetching or deleting messages: {e}")
 
-        await delete_matching_files()
-        await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
+        messages_count = 0
+        await delete_matching_messages()
+        await message.reply(f"Deleted {messages_count} messages matching criteria: '{criteria}'.")
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
-        await message.reply("An error occurred while deleting files.")
+        await message.reply("An error occurred while deleting messages.")
+
 
 async def main():
     await User.start()
