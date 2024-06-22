@@ -1,7 +1,11 @@
 import asyncio
+import logging
 from os import environ
 from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)  # Basic logging to console
 
 API_ID = int(environ.get("API_ID"))
 API_HASH = environ.get("API_HASH")
@@ -50,6 +54,8 @@ async def delete_files(bot, message):
 
         async def delete_matching_files():
             nonlocal messages_count, last_message_id
+            logging.info("Starting deletion process...")
+            logging.info(f"Target: {max_messages} messages to delete.")
             while messages_count < max_messages:
                 deleted_in_batch = 0
                 try:
@@ -65,22 +71,25 @@ async def delete_files(bot, message):
                         last_message_id = msg.message_id
 
                     if deleted_in_batch == 0:
-                        break  # No more messages matching the pattern
+                        break  # No more messages matching the pattern or reached limit
+
+                    logging.info(f"Processed batch of {deleted_in_batch} messages.")
+                    logging.info(f"Total deleted: {messages_count}")
 
                     await asyncio.sleep(2)  # Avoid hitting rate limits
 
                 except FloodWait as e:
-                    print(f"Rate limit exceeded. Waiting for {e.x} seconds.")
+                    logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
                     await asyncio.sleep(e.x)
                 except Exception as e:
-                    print(f"An error occurred: {e}")
+                    logging.error(f"An error occurred: {e}")
                     break
 
         await delete_matching_files()
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         await message.reply("An error occurred while deleting files.")
 
 async def main():
@@ -90,6 +99,7 @@ async def main():
     print("Bot Started!")
     await idle()
     await User.stop()
+
     print("User Stopped!")
     await Bot.stop()
     print("Bot Stopped!")
@@ -97,3 +107,4 @@ async def main():
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+  
