@@ -49,7 +49,7 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()
         messages_count = 0
         last_message_id = 0
-        batch_size = 100  # Size of each batch of messages to fetch
+        batch_size = 5000  # Size of each batch of messages to fetch
         max_messages = 600000  # Desired limit of messages to process
 
         async def delete_matching_files():
