@@ -44,7 +44,7 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()
 
         messages_count = 0
-        async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=100):
+        async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=674686):
             if messages_count >= 100:  # Adjust the limit here
                 break
 
