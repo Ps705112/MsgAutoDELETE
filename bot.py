@@ -30,7 +30,6 @@ Bot = Client(name="auto-delete",
 async def start(bot, message):
     await message.reply(START_MSG.format(message.from_user.mention))
 
-
 @Bot.on_message(filters.command('delete_file') & filters.private)
 async def delete_files(bot, message):
     try:
@@ -47,13 +46,14 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()  # Convert to lower case for case-insensitive comparison
 
         # Fetch recent messages in the channel
-        async for message in Bot.get_history(chat_id=CHANNEL_ID, limit=100):  # Adjust the limit as needed
-            if message.media:
-                media = message.document or message.photo or message.video or message.audio or message.voice or message.video_note
+        messages = await Bot.get_messages(chat_id=CHANNEL_ID, limit=100)  # Adjust the limit as needed
+        for msg in messages:
+            if msg.media:
+                media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
                 if media:
                     file_name = getattr(media, 'file_name', '')
                     if file_name_pattern in file_name.lower():
-                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=message.message_id)
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.message_id)
 
         await message.reply(f"Files named '{file_name_pattern}' have been deleted.")
     except Exception as e:
