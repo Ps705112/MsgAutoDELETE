@@ -59,16 +59,17 @@ async def delete_files(bot, message):
             while messages_count < max_messages:
                 deleted_in_batch = 0
                 try:
-                    async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=batch_size, offset_id=last_message_id):
-                        if msg.media:
-                            media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
-                            if media:
-                                file_name = getattr(media, 'file_name', '')
-                                if file_name and file_name_pattern in file_name.lower():
-                                    await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
-                                    messages_count += 1  # Track deleted messages
-                                    deleted_in_batch += 1
-                        last_message_id = msg.message_id
+                            async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=batch_size, offset_id=last_message_id):
+            if msg.media:
+                media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
+                if media:
+                    file_name = getattr(media, 'file_name', '')
+                    if file_name and file_name_pattern in file_name.lower():
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])  # Use .id here
+                        messages_count += 1  # Track deleted messages
+                        deleted_in_batch += 1
+                    last_message_id = msg.id 
+                  
 
                     if deleted_in_batch == 0:
                         break  # No more messages matching the pattern or reached limit
