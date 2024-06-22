@@ -10,7 +10,7 @@ TIME = int(environ.get("TIME"))
 CHANNEL_ID = int(environ.get("CHANNEL_ID"))  # Add your channel ID here
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 
-START_MSG = "<b>Hai {},\nI'm a simple bot to delete group messages after a specific time <a href=https://github.com/jkdevil27/MsgAutoDELETE>Make your own</a> </b>"
+START_MSG = "<b>Hai {},\nI'm a simple bot to delete channel msg </b>"
 
 User = Client(name="user-account",
               session_string=SESSION,
@@ -46,15 +46,14 @@ async def delete_files(bot, message):
 
         file_name_pattern = command_parts[1].lower()  # Convert to lower case for case-insensitive comparison
 
-        chat_id = CHANNEL_ID  # Use the specified channel ID
-
-        async for msg in Bot.iter_history(chat_id, limit=100):  # Adjust the limit as needed
-            if msg.media:
-                media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
+        # Fetch recent messages in the channel
+        async for message in Bot.get_history(chat_id=CHANNEL_ID, limit=100):  # Adjust the limit as needed
+            if message.media:
+                media = message.document or message.photo or message.video or message.audio or message.voice or message.video_note
                 if media:
                     file_name = getattr(media, 'file_name', '')
                     if file_name_pattern in file_name.lower():
-                        await Bot.delete_messages(chat_id, msg.id)
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=message.message_id)
 
         await message.reply(f"Files named '{file_name_pattern}' have been deleted.")
     except Exception as e:
