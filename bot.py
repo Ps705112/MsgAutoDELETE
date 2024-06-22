@@ -61,14 +61,14 @@ async def delete_messages(bot, message):
                 async for message in User.search_messages(chat_id=CHANNEL_ID):
                     # Check for text in video titles
                     if message.caption and criteria in message.caption.lower():
-                        await User.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
                         messages_count += 1
                         logging.info(f"Deleted message with ID: {message.id} (video title match)")
                         await asyncio.sleep(1)  # Avoid rate limits
 
                     # Check for text in video file names (if message has a document)
                     elif message.document and message.document.file_name and criteria in message.document.file_name.lower():
-                        await User.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
                         messages_count += 1
                         logging.info(f"Deleted message with ID: {message.id} (file name match)")
                         await asyncio.sleep(1)  # Avoid rate limits
