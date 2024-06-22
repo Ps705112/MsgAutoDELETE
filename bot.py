@@ -6,11 +6,10 @@ API_ID = int(environ.get("API_ID"))
 API_HASH = environ.get("API_HASH")
 BOT_TOKEN = environ.get("BOT_TOKEN")
 SESSION = environ.get("SESSION")
-TIME = int(environ.get("TIME"))
-CHANNEL_ID = int(environ.get("CHANNEL_ID"))  # Add your channel ID here
+CHANNEL_ID = int(environ.get("CHANNEL_ID"))
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 
-START_MSG = "<b>Hai {},\nI'm a simple bot to delete channel msg </b>"
+START_MSG = "<b>Hai {},\nI'm a simple bot to delete channel messages</b>"
 
 User = Client(name="user-account",
               session_string=SESSION,
@@ -45,7 +44,7 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()
 
         messages_count = 0
-        async for msg in Bot.get_chat_history(chat_id=CHANNEL_ID, limit=100):
+        async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=100):
             if messages_count >= 100:  # Adjust the limit here
                 break
 
@@ -53,7 +52,7 @@ async def delete_files(bot, message):
                 media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
                 if media:
                     file_name = getattr(media, 'file_name', '')
-                    if file_name_pattern in file_name.lower():
+                    if file_name and file_name_pattern in file_name.lower():
                         await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.message_id)
                         messages_count += 1  # Track deleted messages
 
@@ -62,15 +61,17 @@ async def delete_files(bot, message):
         print(f"An error occurred: {e}")
         await message.reply("An error occurred while deleting files.")
 
+async def main():
+    await User.start()
+    print("User Started!")
+    await Bot.start()
+    print("Bot Started!")
+    await idle()
+    await User.stop()
+    print("User Stopped!")
+    await Bot.stop()
+    print("Bot Stopped!")
 
-User.start()
-print("User Started!")
-Bot.start()
-print("Bot Started!")
-
-idle()
-
-User.stop()
-print("User Stopped!")
-Bot.stop()
-print("Bot Stopped!")
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
