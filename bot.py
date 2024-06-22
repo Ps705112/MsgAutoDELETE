@@ -37,28 +37,31 @@ async def delete_files(bot, message):
             await message.reply("You don't have permission to use this command.")
             return
 
-        # Get the file name from the command
         command_parts = message.text.split(maxsplit=1)
         if len(command_parts) < 2:
-            await message.reply("Please provide the file name to delete.")
+            await message.reply("Please provide the file name pattern to delete.")
             return
 
-        file_name_pattern = command_parts[1].lower()  # Convert to lower case for case-insensitive comparison
+        file_name_pattern = command_parts[1].lower()
 
-        # Fetch recent messages in the channel
-        messages = await Bot.get_messages(chat_id=CHANNEL_ID, limit=100)  # Adjust the limit as needed
-        for msg in messages:
+        messages_count = 0
+        async for msg in Bot.iter_history(chat_id=CHANNEL_ID):
+            if messages_count >= 100:  # Adjust the limit here
+                break
+
             if msg.media:
                 media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
                 if media:
                     file_name = getattr(media, 'file_name', '')
                     if file_name_pattern in file_name.lower():
                         await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.message_id)
+                        messages_count += 1  # Track deleted messages
 
-        await message.reply(f"Files named '{file_name_pattern}' have been deleted.")
+        await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
     except Exception as e:
-        print(e)
+        print(f"An error occurred: {e}")
         await message.reply("An error occurred while deleting files.")
+
 
 User.start()
 print("User Started!")
