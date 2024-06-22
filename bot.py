@@ -3,7 +3,6 @@ import logging
 from os import environ
 from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
-from fuzzywuzzy import fuzz  # For fuzzy matching
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)  # Basic logging to console
@@ -15,7 +14,7 @@ SESSION = environ.get("SESSION")
 CHANNEL_ID = int(environ.get("CHANNEL_ID"))
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 
-START_MSG = "<b>Hai {},\nI'm a simple bot to delete channel messages</b>"
+START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages based on file name pattern.</b>"
 
 User = Client(name="user-account",
               session_string=SESSION,
@@ -30,22 +29,6 @@ Bot = Client(name="auto-delete",
              bot_token=BOT_TOKEN,
              workers=300
              )
-
-async def filter_chat(c: Client, query, chat_id_list=[], offset=0, filter=None, num_results=10):
-    query_list = query.split()
-    results = []
-
-    for q in query_list:
-        for chat_id in chat_id_list:
-            async for message in c.get_chat_history(chat_id=chat_id, limit=num_results, offset_id=offset, filter=filter):
-                if message.media:
-                    media = message.document or message.photo or message.video or message.audio or message.voice or message.video_note
-                    if media:
-                        file_name = getattr(media, 'file_name', '')
-                        if file_name and fuzz.partial_ratio(q.lower(), file_name.lower()) >= 80:  # Adjust fuzz ratio as needed
-                            results.append(message)
-
-    return results
 
 @Bot.on_message(filters.command('start') & filters.private)
 async def start(bot, message):
@@ -66,21 +49,25 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()
         messages_count = 0
 
-        # Retrieve messages matching the file name pattern
-        matching_messages = await filter_chat(User, file_name_pattern, [CHANNEL_ID])
+        async def delete_matching_files():
+            nonlocal messages_count
+            logging.info("Starting deletion process...")
 
-        for msg in matching_messages:
             try:
-                await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
-                messages_count += 1
-                logging.info(f"Deleted message with ID: {msg.id}")
-                await asyncio.sleep(1)  # Avoid rate limits
+                async for message in User.search_messages(chat_id=CHANNEL_ID, query=file_name_pattern, filter="document"):
+                    if file_name_pattern in message.document.file_name.lower():
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.message_id])
+                        messages_count += 1
+                        logging.info(f"Deleted message with ID: {message.message_id}")
+                        await asyncio.sleep(1)  # Avoid rate limits
+
             except FloodWait as e:
                 logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
                 await asyncio.sleep(e.x)
             except Exception as e:
-                logging.error(f"Error deleting message: {e}")
+                logging.error(f"Error occurred while fetching or deleting messages: {e}")
 
+        await delete_matching_files()
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
 
     except Exception as e:
@@ -89,15 +76,15 @@ async def delete_files(bot, message):
 
 async def main():
     await User.start()
-    print("User Started!")
+    print("User Account Client Started!")
     await Bot.start()
-    print("Bot Started!")
+    print("Bot Client Started!")
     await idle()
     await User.stop()
 
-    print("User Stopped!")
+    print("User Account Client Stopped!")
     await Bot.stop()
-    print("Bot Stopped!")
+    print("Bot Client Stopped!")
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
