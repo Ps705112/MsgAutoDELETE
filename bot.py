@@ -1,6 +1,7 @@
 import asyncio
 from os import environ
 from pyrogram import Client, filters, idle
+from pyrogram.errors import FloodWait
 
 API_ID = int(environ.get("API_ID"))
 API_HASH = environ.get("API_HASH")
@@ -44,26 +45,36 @@ async def delete_files(bot, message):
         file_name_pattern = command_parts[1].lower()
         messages_count = 0
         last_message_id = 0
+        batch_size = 100  # Size of each batch of messages to fetch
+        max_messages = 600000  # Desired limit of messages to process
 
         async def delete_matching_files():
             nonlocal messages_count, last_message_id
-            while True:
+            while messages_count < max_messages:
                 deleted_in_batch = 0
-                async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=600000, offset_id=last_message_id):
-                    if msg.media:
-                        media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
-                        if media:
-                            file_name = getattr(media, 'file_name', '')
-                            if file_name and file_name_pattern in file_name.lower():
-                                await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
-                                messages_count += 1  # Track deleted messages
-                                deleted_in_batch += 1
-                    last_message_id = msg.id
+                try:
+                    async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=batch_size, offset_id=last_message_id):
+                        if msg.media:
+                            media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
+                            if media:
+                                file_name = getattr(media, 'file_name', '')
+                                if file_name and file_name_pattern in file_name.lower():
+                                    await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
+                                    messages_count += 1  # Track deleted messages
+                                    deleted_in_batch += 1
+                        last_message_id = msg.message_id
 
-                if deleted_in_batch == 0:
-                    break  # No more messages matching the pattern
+                    if deleted_in_batch == 0:
+                        break  # No more messages matching the pattern
 
-                await asyncio.sleep(2)  # Avoid hitting rate limits
+                    await asyncio.sleep(2)  # Avoid hitting rate limits
+
+                except FloodWait as e:
+                    print(f"Rate limit exceeded. Waiting for {e.x} seconds.")
+                    await asyncio.sleep(e.x)
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    break
 
         await delete_matching_files()
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
