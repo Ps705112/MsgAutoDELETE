@@ -3,6 +3,7 @@ import logging
 from os import environ
 from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
+from fuzzywuzzy import fuzz  # For fuzzy matching
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)  # Basic logging to console
@@ -30,6 +31,22 @@ Bot = Client(name="auto-delete",
              workers=300
              )
 
+async def filter_chat(c: Client, query, chat_id_list=[], offset=0, filter=None, num_results=10):
+    query_list = query.split()
+    results = []
+
+    for q in query_list:
+        for chat_id in chat_id_list:
+            async for message in c.get_chat_history(chat_id=chat_id, limit=num_results, offset_id=offset, filter=filter):
+                if message.media:
+                    media = message.document or message.photo or message.video or message.audio or message.voice or message.video_note
+                    if media:
+                        file_name = getattr(media, 'file_name', '')
+                        if file_name and fuzz.partial_ratio(q.lower(), file_name.lower()) >= 80:  # Adjust fuzz ratio as needed
+                            results.append(message)
+
+    return results
+
 @Bot.on_message(filters.command('start') & filters.private)
 async def start(bot, message):
     await message.reply(START_MSG.format(message.from_user.mention))
@@ -48,45 +65,22 @@ async def delete_files(bot, message):
 
         file_name_pattern = command_parts[1].lower()
         messages_count = 0
-        last_message_id = 0
-        batch_size = 5000  # Size of each batch of messages to fetch
-        max_messages = 600000  # Desired limit of messages to process
 
-        async def delete_matching_files():
-            nonlocal messages_count, last_message_id
-            logging.info("Starting deletion process...")
-            logging.info(f"Target: {max_messages} messages to delete.")
-            while messages_count < max_messages:
-                deleted_in_batch = 0
-                try:
-                    async for msg in User.get_chat_history(chat_id=CHANNEL_ID, limit=batch_size, offset_id=last_message_id):
-                        if msg.media:
-                            media = msg.document or msg.photo or msg.video or msg.audio or msg.voice or msg.video_note
-                            if media:
-                                file_name = getattr(media, 'file_name', '')
-                                if file_name and file_name_pattern in file_name.lower():
-                                    await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])  # Use .id here
-                                    messages_count += 1  # Track deleted messages
-                                    deleted_in_batch += 1
-                                    last_message_id = msg.id
-                  
+        # Retrieve messages matching the file name pattern
+        matching_messages = await filter_chat(User, file_name_pattern, [CHANNEL_ID])
 
-                    if deleted_in_batch == 0:
-                        break  # No more messages matching the pattern or reached limit
+        for msg in matching_messages:
+            try:
+                await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])
+                messages_count += 1
+                logging.info(f"Deleted message with ID: {msg.id}")
+                await asyncio.sleep(1)  # Avoid rate limits
+            except FloodWait as e:
+                logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
+                await asyncio.sleep(e.x)
+            except Exception as e:
+                logging.error(f"Error deleting message: {e}")
 
-                    logging.info(f"Processed batch of {deleted_in_batch} messages.")
-                    logging.info(f"Total deleted: {messages_count}")
-
-                    await asyncio.sleep(2)  # Avoid hitting rate limits
-
-                except FloodWait as e:
-                    logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
-                    await asyncio.sleep(e.x)
-                except Exception as e:
-                    logging.error(f"An error occurred: {e}")
-                    break
-
-        await delete_matching_files()
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
 
     except Exception as e:
@@ -108,4 +102,3 @@ async def main():
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-  
