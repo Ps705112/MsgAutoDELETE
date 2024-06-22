@@ -53,7 +53,8 @@ async def delete_files(bot, message):
                 if media:
                     file_name = getattr(media, 'file_name', '')
                     if file_name and file_name_pattern in file_name.lower():
-                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.message_id)
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=msg.id)
+                      
                         messages_count += 1  # Track deleted messages
 
         await message.reply(f"Deleted {messages_count} files matching '{file_name_pattern}'.")
