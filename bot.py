@@ -1,12 +1,10 @@
 import asyncio
 import logging
 from os import environ
-from pyrogram import Client, filters, idle, enums
+from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)  # Basic logging to console
-
 API_ID = int(environ.get("API_ID"))
 API_HASH = environ.get("API_HASH")
 BOT_TOKEN = environ.get("BOT_TOKEN")
@@ -18,11 +16,21 @@ START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages by Name.</b>"
 
 User = Client(name="user-account",
               session_string=SESSION,
+
+    
+        
+          
+    
+
+        
+        Expand All
+    
+    @@ -30,51 +30,60 @@
+  
               api_id=API_ID,
               api_hash=API_HASH,
               workers=300
               )
-
 Bot = Client(name="auto-delete",
              api_id=API_ID,
              api_hash=API_HASH,
@@ -55,15 +63,21 @@ async def delete_messages(bot, message):
             logging.info("Starting deletion process...")
 
             try:
-                async for message in User.search_messages(chat_id=CHANNEL_ID, query=criteria, filter=enums.MessagesFilter.EMPTY, limit=100):
+                async for message in User.search_messages(chat_id=CHANNEL_ID):
                     # Check for text in video titles
-                    if message.text or message.caption:
+                    if message.caption and criteria in message.caption.lower():
                         await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
                         messages_count += 1
                         logging.info(f"Deleted message with ID: {message.id} (video title match)")
                         await asyncio.sleep(1)  # Avoid rate limits
 
-                    
+                    # Check for text in video file names (if message has a document)
+                    elif message.document and message.document.file_name and criteria in message.document.file_name.lower():
+                        await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
+                        messages_count += 1
+                        logging.info(f"Deleted message with ID: {message.id} (file name match)")
+                        await asyncio.sleep(1)  # Avoid rate limits
+
             except FloodWait as e:
                 logging.warning(f"Rate limit exceeded. Waiting for {e.x} seconds.")
                 await asyncio.sleep(e.x)
@@ -86,12 +100,9 @@ async def main():
     print("Bot Client Started!")
     await idle()
     await User.stop()
-
     print("User Account Client Stopped!")
     await Bot.stop()
     print("Bot Client Stopped!")
-
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-  
