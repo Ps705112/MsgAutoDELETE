@@ -54,7 +54,7 @@ async def delete_files(bot, message):
             logging.info("Starting deletion process...")
 
             try:
-                async for message in User.search_messages(chat_id=CHANNEL_ID, query=file_name_pattern, filter="document"):
+                async for message in User.search_messages(chat_id=CHANNEL_ID, query=file_name_pattern):
                     # Check if message has a document and its filename is not None
                     if message.document and message.document.file_name:
                         if file_name_pattern in message.document.file_name.lower():
