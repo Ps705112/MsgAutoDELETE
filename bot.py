@@ -3,7 +3,6 @@ from os import environ
 from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
 
-# Load environment variables securely (consider using a library like dotenv)
 API_ID = int(environ.get("API_ID"))
 API_HASH = environ.get("API_HASH")
 BOT_TOKEN = environ.get("BOT_TOKEN")
@@ -13,7 +12,6 @@ ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 
 START_MSG = "<b>Hai {},\nI'm a simple bot to delete channel messages</b>"
 
-# Create separate client instances for user and bot accounts
 User = Client(name="user-account",
               session_string=SESSION,
               api_id=API_ID,
@@ -46,8 +44,7 @@ async def delete_files(bot, message):
 
         file_name_pattern = command_parts[1].lower()
         messages_count = 0
-        last_message_id = None  # Use `None` for initial value in newer Pyrogram versions
-
+        last_message_id = 0
         batch_size = 100  # Size of each batch of messages to fetch
         max_messages = 600000  # Desired limit of messages to process
 
@@ -62,10 +59,10 @@ async def delete_files(bot, message):
                             if media:
                                 file_name = getattr(media, 'file_name', '')
                                 if file_name and file_name_pattern in file_name.lower():
-                                    await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.id])  # Use `msg.id` for message ID
+                                    await Bot.delete_messages(chat_id=CHANNEL_ID, message_ids=[msg.message_id])
                                     messages_count += 1  # Track deleted messages
                                     deleted_in_batch += 1
-                        last_message_id = msg.id  # Update last_message_id for pagination
+                        last_message_id = msg.message_id
 
                     if deleted_in_batch == 0:
                         break  # No more messages matching the pattern
@@ -95,5 +92,8 @@ async def main():
     await User.stop()
     print("User Stopped!")
     await Bot.stop()
-    print
-  
+    print("Bot Stopped!")
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
