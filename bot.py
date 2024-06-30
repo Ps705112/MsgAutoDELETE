@@ -12,6 +12,7 @@ API_HASH = environ.get("API_HASH")
 BOT_TOKEN = environ.get("BOT_TOKEN")
 SESSION = environ.get("SESSION")
 CHANNEL_ID = int(environ.get("CHANNEL_ID"))
+LIMIT = environ.get("LIMIT", "100")
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages by Name.</b>"
 
@@ -47,7 +48,7 @@ async def delete_messages(bot, message):
             logging.info("Starting deletion process...")
 
             try:
-                async for message in User.search_messages(chat_id=CHANNEL_ID, query=criteria, filter=enums.MessagesFilter.EMPTY, limit=100):
+                async for message in User.search_messages(chat_id=CHANNEL_ID, query=criteria, filter=enums.MessagesFilter.EMPTY, limit=LIMIT):
                     # Check for text in video titles
                     if message.text or message.caption:
                         await User.delete_messages(chat_id=CHANNEL_ID, message_ids=[message.id])
