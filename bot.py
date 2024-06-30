@@ -12,7 +12,7 @@ API_HASH = environ.get("API_HASH")
 BOT_TOKEN = environ.get("BOT_TOKEN")
 SESSION = environ.get("SESSION")
 CHANNEL_ID = int(environ.get("CHANNEL_ID"))
-LIMIT = environ.get("LIMIT", "100")
+LIMIT = int(environ.get("LIMIT", "100"))
 ADMINS = [int(usr) for usr in environ.get("ADMINS").split()]
 START_MSG = "<b>Hello {},\nI'm a bot to delete channel messages by Name.</b>"
 
